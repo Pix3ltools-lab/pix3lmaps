@@ -14,6 +14,10 @@ export function Toolbar() {
   const mapName = useMapStore((s) => s.mapName);
   const setMapName = useMapStore((s) => s.setMapName);
   const reset = useMapStore((s) => s.reset);
+  const undo = useMapStore((s) => s.undo);
+  const redo = useMapStore((s) => s.redo);
+  const canUndo = useMapStore((s) => s.past.length > 0);
+  const canRedo = useMapStore((s) => s.future.length > 0);
 
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(mapName);
@@ -97,6 +101,49 @@ export function Toolbar() {
 
       {/* Right side */}
       <div className="flex items-center gap-1">
+        <button
+          onClick={undo}
+          disabled={!canUndo}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--text-secondary)]"
+          title="Undo (Ctrl+Z)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M3 7h7a3 3 0 0 1 0 6H9" />
+            <path d="M6 4L3 7l3 3" />
+          </svg>
+        </button>
+        <button
+          onClick={redo}
+          disabled={!canRedo}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)] disabled:cursor-default disabled:opacity-30 disabled:hover:bg-transparent disabled:hover:text-[var(--text-secondary)]"
+          title="Redo (Ctrl+Shift+Z)"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M13 7H6a3 3 0 0 0 0 6h1" />
+            <path d="M10 4l3 3-3 3" />
+          </svg>
+        </button>
+
+        <span className="mx-1 text-[var(--border-color)]">|</span>
+
         <button
           onClick={() => zoomIn()}
           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"

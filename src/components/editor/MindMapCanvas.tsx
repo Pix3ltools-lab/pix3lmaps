@@ -29,6 +29,8 @@ export function MindMapCanvas() {
   const setEditingNodeId = useMapStore((s) => s.setEditingNodeId);
   const setSelectedNodeId = useMapStore((s) => s.setSelectedNodeId);
   const deleteNode = useMapStore((s) => s.deleteNode);
+  const undo = useMapStore((s) => s.undo);
+  const redo = useMapStore((s) => s.redo);
 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -63,6 +65,29 @@ export function MindMapCanvas() {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [selectedNodeId, editingNodeId, deleteNode]);
+
+  // Undo/redo handler
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+
+      // Don't intercept when editing text
+      if (editingNodeId) return;
+      const tag = (e.target as HTMLElement).tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+
+      if (e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+        e.preventDefault();
+        redo();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [editingNodeId, undo, redo]);
 
   return (
     <ReactFlow

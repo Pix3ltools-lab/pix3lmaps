@@ -47,6 +47,7 @@ export const DEFAULT_ROOT_LABEL = 'Central Idea';
 export const MAX_IMAGE_SIZE = 2 * 1024 * 1024; // 2 MB
 export const MAX_TEXT_LENGTH = 150;
 export const MAX_UNDO_STEPS = 50;
+export const UNDO_BATCH_MS = 300;
 export const AUTO_SAVE_DEBOUNCE_MS = 500;
 export const THUMBNAIL_WIDTH = 320;
 export const THUMBNAIL_HEIGHT = 180;
