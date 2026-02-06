@@ -1,3 +1,4 @@
+@import '@xyflow/react/dist/style.css';
 @import "tailwindcss";
 
 @theme inline {
@@ -87,4 +88,15 @@ body {
 
 .border-theme {
   border-color: var(--border-color);
+}
+
+/* ── React Flow overrides ────────────────────────────────────────── */
+.react-flow {
+  --xy-background-color: var(--bg-body);
+  --xy-node-border-radius: 8px;
+}
+.react-flow__minimap {
+  background-color: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
 }

@@ -1,0 +1,196 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { useReactFlow } from '@xyflow/react';
+import { useMapStore } from '@/hooks/useMapStore';
+import { useTheme } from '@/contexts/ThemeContext';
+
+export function Toolbar() {
+  const router = useRouter();
+  const { zoomIn, zoomOut, fitView } = useReactFlow();
+  const { theme, toggleTheme } = useTheme();
+
+  const mapName = useMapStore((s) => s.mapName);
+  const setMapName = useMapStore((s) => s.setMapName);
+  const reset = useMapStore((s) => s.reset);
+
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(mapName);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setNameDraft(mapName);
+  }, [mapName]);
+
+  useEffect(() => {
+    if (isEditingName) {
+      inputRef.current?.focus();
+      inputRef.current?.select();
+    }
+  }, [isEditingName]);
+
+  const confirmName = useCallback(() => {
+    const trimmed = nameDraft.trim();
+    if (trimmed) setMapName(trimmed);
+    else setNameDraft(mapName);
+    setIsEditingName(false);
+  }, [nameDraft, mapName, setMapName]);
+
+  const handleBack = useCallback(() => {
+    reset();
+    router.push('/');
+  }, [reset, router]);
+
+  return (
+    <header className="bg-surface border-theme flex items-center justify-between border-b px-4 py-2">
+      {/* Left side */}
+      <div className="flex items-center gap-3">
+        <button
+          onClick={handleBack}
+          className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-transparent px-2 py-1 text-sm text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
+          style={{ border: 'none' }}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M10 12L6 8l4-4" />
+          </svg>
+          Dashboard
+        </button>
+
+        <span className="text-[var(--border-color)]">|</span>
+
+        {isEditingName ? (
+          <input
+            ref={inputRef}
+            className="rounded border border-[var(--border-color)] bg-[var(--bg-input)] px-2 py-0.5 text-sm text-[var(--text-primary)] outline-none"
+            value={nameDraft}
+            onChange={(e) => setNameDraft(e.target.value)}
+            onBlur={confirmName}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') confirmName();
+              if (e.key === 'Escape') {
+                setNameDraft(mapName);
+                setIsEditingName(false);
+              }
+            }}
+            maxLength={100}
+          />
+        ) : (
+          <span
+            className="cursor-pointer text-sm font-semibold text-[var(--text-primary)] hover:underline"
+            onClick={() => setIsEditingName(true)}
+            title="Click to rename"
+          >
+            {mapName}
+          </span>
+        )}
+      </div>
+
+      {/* Right side */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={() => zoomIn()}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          title="Zoom in"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="7" cy="7" r="5" />
+            <path d="M11 11l3 3" />
+            <path d="M5 7h4M7 5v4" />
+          </svg>
+        </button>
+        <button
+          onClick={() => zoomOut()}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          title="Zoom out"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+          >
+            <circle cx="7" cy="7" r="5" />
+            <path d="M11 11l3 3" />
+            <path d="M5 7h4" />
+          </svg>
+        </button>
+        <button
+          onClick={() => fitView({ padding: 0.2 })}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          title="Fit view"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M2 6V2h4M10 2h4v4M14 10v4h-4M6 14H2v-4" />
+          </svg>
+        </button>
+
+        <span className="mx-1 text-[var(--border-color)]">|</span>
+
+        <button
+          onClick={toggleTheme}
+          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+        >
+          {theme === 'dark' ? (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="8" cy="8" r="3" />
+              <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" />
+            </svg>
+          ) : (
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 16 16"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M14 10A6 6 0 016 2a6 6 0 108 8z" />
+            </svg>
+          )}
+        </button>
+      </div>
+    </header>
+  );
+}
