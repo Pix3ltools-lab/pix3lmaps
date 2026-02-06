@@ -6,6 +6,7 @@ import { ReactFlowProvider } from '@xyflow/react';
 import { useMapStore } from '@/hooks/useMapStore';
 import { Toolbar } from '@/components/editor/Toolbar';
 import { MindMapCanvas } from '@/components/editor/MindMapCanvas';
+import { NodePropertiesSidebar } from '@/components/editor/NodePropertiesSidebar';
 
 function EditorInner() {
   const params = useParams();
@@ -16,6 +17,7 @@ function EditorInner() {
   const error = useMapStore((s) => s.error);
   const loadMap = useMapStore((s) => s.loadMap);
   const reset = useMapStore((s) => s.reset);
+  const selectedNodeId = useMapStore((s) => s.selectedNodeId);
 
   useEffect(() => {
     if (!isNaN(id)) loadMap(id);
@@ -48,8 +50,18 @@ function EditorInner() {
   return (
     <div className="bg-body flex h-screen flex-col">
       <Toolbar />
-      <div className="flex-1 overflow-hidden">
-        <MindMapCanvas />
+      <div className="flex flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden transition-all duration-300">
+          <MindMapCanvas />
+        </div>
+        {/* Sidebar wrapper — slides in/out */}
+        <div
+          className="bg-surface border-theme overflow-hidden border-l transition-all duration-300"
+          style={{ width: selectedNodeId ? 280 : 0 }}
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <NodePropertiesSidebar />
+        </div>
       </div>
     </div>
   );

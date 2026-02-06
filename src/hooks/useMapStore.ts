@@ -6,7 +6,7 @@ import {
   type EdgeChange,
 } from '@xyflow/react';
 import { db } from '@/lib/db';
-import type { MindMapNode, MindMapEdge, LayoutMode } from '@/types';
+import type { MindMapNode, MindMapNodeData, MindMapEdge, LayoutMode } from '@/types';
 import {
   DEFAULT_NODE_COLOR,
   DEFAULT_NODE_SHAPE,
@@ -46,6 +46,7 @@ interface MapActions {
   onEdgesChange: (changes: EdgeChange<MindMapEdge>[]) => void;
   addChildNode: (parentId: string) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
+  updateNodeData: (nodeId: string, partial: Partial<MindMapNodeData>) => void;
   deleteNode: (nodeId: string) => void;
   setSelectedNodeId: (id: string | null) => void;
   setEditingNodeId: (id: string | null) => void;
@@ -187,6 +188,16 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
         n.id === nodeId ? { ...n, data: { ...n.data, label } } : n,
       ),
       editingNodeId: null,
+    });
+    debouncedPersist(get());
+  },
+
+  updateNodeData: (nodeId, partial) => {
+    const { nodes } = get();
+    set({
+      nodes: nodes.map((n) =>
+        n.id === nodeId ? { ...n, data: { ...n.data, ...partial } } : n,
+      ),
     });
     debouncedPersist(get());
   },
