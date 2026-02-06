@@ -5,6 +5,7 @@ import {
   type NodeChange,
   type EdgeChange,
   type NodePositionChange,
+  type Connection,
 } from '@xyflow/react';
 import { db } from '@/lib/db';
 import type { MindMapNode, MindMapNodeData, MindMapEdge, LayoutMode } from '@/types';
@@ -60,6 +61,8 @@ interface MapActions {
   onNodesChange: (changes: NodeChange<MindMapNode>[]) => void;
   onEdgesChange: (changes: EdgeChange<MindMapEdge>[]) => void;
   addChildNode: (parentId: string) => void;
+  addSiblingNode: (nodeId: string) => void;
+  addEdge: (connection: Connection) => void;
   updateNodeLabel: (nodeId: string, label: string) => void;
   updateNodeData: (nodeId: string, partial: Partial<MindMapNodeData>) => void;
   deleteNode: (nodeId: string) => void;
@@ -67,6 +70,7 @@ interface MapActions {
   setEditingNodeId: (id: string | null) => void;
   setMapName: (name: string) => void;
   persist: () => void;
+  saveThumbnail: (thumbnail: string) => void;
   undo: () => void;
   redo: () => void;
   setLayoutMode: (mode: LayoutMode) => void;
@@ -287,6 +291,40 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
     debouncedPersist(get());
   },
 
+  addSiblingNode: (nodeId) => {
+    const state = get();
+    const node = state.nodes.find((n) => n.id === nodeId);
+    if (!node?.data.parentId) return; // no-op on root
+    get().addChildNode(node.data.parentId);
+  },
+
+  addEdge: (connection) => {
+    const state = get();
+    const { source, target } = connection;
+    if (!source || !target) return;
+    if (source === target) return;
+
+    // Prevent duplicate edges
+    const exists = state.edges.some(
+      (e) => e.source === source && e.target === target,
+    );
+    if (exists) return;
+
+    const past = pushSnapshot(state, false);
+    const newEdge: MindMapEdge = {
+      id: `edge-${source}-${target}`,
+      source,
+      target,
+    };
+
+    set({
+      edges: [...state.edges, newEdge],
+      past,
+      future: [],
+    });
+    debouncedPersist(get());
+  },
+
   updateNodeLabel: (nodeId, label) => {
     const state = get();
     const past = pushSnapshot(state, true);
@@ -359,6 +397,12 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
 
   persist: () => {
     debouncedPersist(get());
+  },
+
+  saveThumbnail: (thumbnail) => {
+    const { mapId } = get();
+    if (mapId == null) return;
+    db.maps.update(mapId, { thumbnail }).catch(console.error);
   },
 
   setLayoutMode: (mode) => {

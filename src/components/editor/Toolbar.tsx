@@ -6,6 +6,10 @@ import { useReactFlow } from '@xyflow/react';
 import { useMapStore } from '@/hooks/useMapStore';
 import { useTheme } from '@/contexts/ThemeContext';
 import { LayoutSelector } from './LayoutSelector';
+import { exportPng, exportJson, importJson } from '@/lib/exportUtils';
+
+const toolbarBtnClass =
+  'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]';
 
 export function Toolbar() {
   const router = useRouter();
@@ -14,6 +18,9 @@ export function Toolbar() {
 
   const mapName = useMapStore((s) => s.mapName);
   const setMapName = useMapStore((s) => s.setMapName);
+  const nodes = useMapStore((s) => s.nodes);
+  const edges = useMapStore((s) => s.edges);
+  const layoutMode = useMapStore((s) => s.layoutMode);
   const reset = useMapStore((s) => s.reset);
   const undo = useMapStore((s) => s.undo);
   const redo = useMapStore((s) => s.redo);
@@ -23,6 +30,7 @@ export function Toolbar() {
   const [isEditingName, setIsEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(mapName);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setNameDraft(mapName);
@@ -46,6 +54,39 @@ export function Toolbar() {
     reset();
     router.push('/');
   }, [reset, router]);
+
+  const handleExportPng = useCallback(async () => {
+    await fitView({ padding: 0.1, duration: 0 });
+    // Wait for fitView to settle
+    await new Promise((r) => setTimeout(r, 150));
+    const el = document.querySelector('.react-flow') as HTMLElement | null;
+    if (!el) return;
+    try {
+      await exportPng(el, mapName);
+    } catch (err) {
+      console.error('PNG export failed:', err);
+    }
+  }, [fitView, mapName]);
+
+  const handleExportJson = useCallback(() => {
+    exportJson(mapName, nodes, edges, layoutMode);
+  }, [mapName, nodes, edges, layoutMode]);
+
+  const handleImportJson = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      try {
+        const newId = await importJson(file);
+        router.push(`/map/${newId}`);
+      } catch (err) {
+        alert(err instanceof Error ? err.message : 'Import failed');
+      }
+      // Reset input so the same file can be re-imported
+      e.target.value = '';
+    },
+    [router],
+  );
 
   return (
     <header className="bg-surface border-theme flex items-center justify-between border-b px-4 py-2">
@@ -151,7 +192,7 @@ export function Toolbar() {
 
         <button
           onClick={() => zoomIn()}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          className={toolbarBtnClass}
           title="Zoom in"
         >
           <svg
@@ -170,7 +211,7 @@ export function Toolbar() {
         </button>
         <button
           onClick={() => zoomOut()}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          className={toolbarBtnClass}
           title="Zoom out"
         >
           <svg
@@ -189,7 +230,7 @@ export function Toolbar() {
         </button>
         <button
           onClick={() => fitView({ padding: 0.2 })}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          className={toolbarBtnClass}
           title="Fit view"
         >
           <svg
@@ -210,7 +251,7 @@ export function Toolbar() {
 
         <button
           onClick={toggleTheme}
-          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg border-none bg-transparent text-[var(--text-secondary)] transition-colors hover:bg-[var(--bg-input)] hover:text-[var(--text-primary)]"
+          className={toolbarBtnClass}
           title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
         >
           {theme === 'dark' ? (
@@ -242,6 +283,79 @@ export function Toolbar() {
             </svg>
           )}
         </button>
+
+        <span className="mx-1 text-[var(--border-color)]">|</span>
+
+        {/* Export PNG */}
+        <button
+          onClick={handleExportPng}
+          className={toolbarBtnClass}
+          title="Export as PNG"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <rect x="2" y="2" width="12" height="12" rx="2" />
+            <circle cx="5.5" cy="5.5" r="1.5" />
+            <path d="M14 10l-3-3-7 7" />
+          </svg>
+        </button>
+
+        {/* Export JSON */}
+        <button
+          onClick={handleExportJson}
+          className={toolbarBtnClass}
+          title="Export as JSON"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8 2v8M4 7l4 4 4-4" />
+            <path d="M2 13h12" />
+          </svg>
+        </button>
+
+        {/* Import JSON */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className={toolbarBtnClass}
+          title="Import JSON"
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 16 16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M8 10V2M4 5l4-4 4 4" />
+            <path d="M2 13h12" />
+          </svg>
+        </button>
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          onChange={handleImportJson}
+          className="hidden"
+        />
       </div>
     </header>
   );
