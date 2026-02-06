@@ -6,6 +6,7 @@ import {
   Background,
   BackgroundVariant,
   MiniMap,
+  useReactFlow,
   type NodeMouseHandler,
 } from '@xyflow/react';
 import { useMapStore } from '@/hooks/useMapStore';
@@ -31,6 +32,19 @@ export function MindMapCanvas() {
   const deleteNode = useMapStore((s) => s.deleteNode);
   const undo = useMapStore((s) => s.undo);
   const redo = useMapStore((s) => s.redo);
+  const isAnimating = useMapStore((s) => s.isAnimating);
+  const setIsAnimating = useMapStore((s) => s.setIsAnimating);
+  const { fitView } = useReactFlow();
+
+  // Clear animation flag after transition and fit view
+  useEffect(() => {
+    if (!isAnimating) return;
+    const timer = setTimeout(() => {
+      setIsAnimating(false);
+      fitView({ padding: 0.2, duration: 200 });
+    }, 310);
+    return () => clearTimeout(timer);
+  }, [isAnimating, setIsAnimating, fitView]);
 
   const handleNodeDoubleClick: NodeMouseHandler = useCallback(
     (_event, node) => {
@@ -90,33 +104,35 @@ export function MindMapCanvas() {
   }, [editingNodeId, undo, redo]);
 
   return (
-    <ReactFlow
-      nodes={nodes}
-      edges={edges}
-      onNodesChange={onNodesChange}
-      onEdgesChange={onEdgesChange}
-      onNodeDoubleClick={handleNodeDoubleClick}
-      onPaneClick={handlePaneClick}
-      nodeTypes={nodeTypes}
-      defaultEdgeOptions={defaultEdgeOptions}
-      deleteKeyCode={null}
-      zoomOnDoubleClick={false}
-      fitView
-    >
-      <Background
-        variant={BackgroundVariant.Dots}
-        color="var(--text-secondary)"
-        style={{ opacity: 0.3 }}
-        gap={20}
-        size={1}
-      />
-      <MiniMap
-        nodeColor={(node) => {
-          const data = node.data as MindMapNodeData;
-          return data.color || '#3498DB';
-        }}
-        maskColor="rgba(0,0,0,0.2)"
-      />
-    </ReactFlow>
+    <div className={isAnimating ? 'layout-animating h-full w-full' : 'h-full w-full'}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        onNodeDoubleClick={handleNodeDoubleClick}
+        onPaneClick={handlePaneClick}
+        nodeTypes={nodeTypes}
+        defaultEdgeOptions={defaultEdgeOptions}
+        deleteKeyCode={null}
+        zoomOnDoubleClick={false}
+        fitView
+      >
+        <Background
+          variant={BackgroundVariant.Dots}
+          color="var(--text-secondary)"
+          style={{ opacity: 0.3 }}
+          gap={20}
+          size={1}
+        />
+        <MiniMap
+          nodeColor={(node) => {
+            const data = node.data as MindMapNodeData;
+            return data.color || '#3498DB';
+          }}
+          maskColor="rgba(0,0,0,0.2)"
+        />
+      </ReactFlow>
+    </div>
   );
 }

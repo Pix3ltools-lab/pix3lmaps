@@ -16,6 +16,7 @@ import {
   MAX_UNDO_STEPS,
   UNDO_BATCH_MS,
 } from '@/lib/constants';
+import { applyLayout } from '@/lib/layouts';
 
 // ── Helpers ─────────────────────────────────────────────────────────
 
@@ -33,6 +34,7 @@ function getDescendantIds(nodeId: string, edges: MindMapEdge[]): string[] {
 interface Snapshot {
   nodes: MindMapNode[];
   edges: MindMapEdge[];
+  layoutMode?: LayoutMode;
 }
 
 // ── Store types ─────────────────────────────────────────────────────
@@ -49,6 +51,7 @@ interface MapState {
   error: string | null;
   past: Snapshot[];
   future: Snapshot[];
+  isAnimating: boolean;
 }
 
 interface MapActions {
@@ -66,6 +69,8 @@ interface MapActions {
   persist: () => void;
   undo: () => void;
   redo: () => void;
+  setLayoutMode: (mode: LayoutMode) => void;
+  setIsAnimating: (v: boolean) => void;
 }
 
 const initialState: MapState = {
@@ -80,6 +85,7 @@ const initialState: MapState = {
   error: null,
   past: [],
   future: [],
+  isAnimating: false,
 };
 
 // ── Debounced persist ───────────────────────────────────────────────
@@ -138,10 +144,15 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
         set({ loading: false, error: 'Map not found' });
         return;
       }
+      // Apply layout if not in free mode
+      let nodes = map.nodes;
+      if (map.layoutMode !== 'free') {
+        nodes = applyLayout(map.layoutMode, map.nodes, map.edges);
+      }
       set({
         mapId: map.id ?? null,
         mapName: map.name,
-        nodes: map.nodes,
+        nodes,
         edges: map.edges,
         layoutMode: map.layoutMode,
         loading: false,
@@ -166,18 +177,26 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
 
   onNodesChange: (changes) => {
     const state = get();
-    const updated = applyNodeChanges(changes, state.nodes);
+
+    // During layout animation, ignore position changes
+    const filteredChanges = state.isAnimating
+      ? changes.filter((c) => c.type !== 'position')
+      : changes;
+
+    if (filteredChanges.length === 0) return;
+
+    const updated = applyNodeChanges(filteredChanges, state.nodes);
 
     // Track selection changes
     let selectedNodeId = state.selectedNodeId;
-    for (const change of changes) {
+    for (const change of filteredChanges) {
       if (change.type === 'select') {
         selectedNodeId = change.selected ? change.id : null;
       }
     }
 
     // Drag detection
-    const positionChanges = changes.filter(
+    const positionChanges = filteredChanges.filter(
       (c): c is NodePositionChange => c.type === 'position',
     );
 
@@ -250,9 +269,17 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
       target: newId,
     };
 
+    let finalNodes = [...state.nodes, newNode];
+    const finalEdges = [...state.edges, newEdge];
+
+    // Auto-layout in radial/tree modes
+    if (state.layoutMode !== 'free') {
+      finalNodes = applyLayout(state.layoutMode, finalNodes, finalEdges);
+    }
+
     set({
-      nodes: [...state.nodes, newNode],
-      edges: [...state.edges, newEdge],
+      nodes: finalNodes,
+      edges: finalEdges,
       editingNodeId: newId,
       past,
       future: [],
@@ -300,11 +327,20 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
     const descendantIds = getDescendantIds(nodeId, state.edges);
     const removeIds = new Set([nodeId, ...descendantIds]);
 
+    const filteredNodes = state.nodes.filter((n) => !removeIds.has(n.id));
+    const filteredEdges = state.edges.filter(
+      (e) => !removeIds.has(e.source) && !removeIds.has(e.target),
+    );
+
+    // Auto-layout in radial/tree modes
+    let finalNodes = filteredNodes;
+    if (state.layoutMode !== 'free') {
+      finalNodes = applyLayout(state.layoutMode, filteredNodes, filteredEdges);
+    }
+
     set({
-      nodes: state.nodes.filter((n) => !removeIds.has(n.id)),
-      edges: state.edges.filter(
-        (e) => !removeIds.has(e.source) && !removeIds.has(e.target),
-      ),
+      nodes: finalNodes,
+      edges: filteredEdges,
       selectedNodeId: null,
       editingNodeId: null,
       past,
@@ -325,17 +361,54 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
     debouncedPersist(get());
   },
 
+  setLayoutMode: (mode) => {
+    const state = get();
+    if (mode === state.layoutMode) return;
+
+    // Push snapshot with current layoutMode so undo restores both positions and mode
+    const snap: Snapshot = structuredClone({
+      nodes: state.nodes,
+      edges: state.edges,
+      layoutMode: state.layoutMode,
+    });
+    const newPast = [...state.past, snap];
+    if (newPast.length > MAX_UNDO_STEPS) {
+      newPast.splice(0, newPast.length - MAX_UNDO_STEPS);
+    }
+
+    let newNodes = state.nodes;
+    if (mode !== 'free') {
+      newNodes = applyLayout(mode, state.nodes, state.edges);
+    }
+
+    set({
+      nodes: newNodes,
+      layoutMode: mode,
+      isAnimating: true,
+      past: newPast,
+      future: [],
+    });
+    debouncedPersist(get());
+  },
+
+  setIsAnimating: (v) => set({ isAnimating: v }),
+
   undo: () => {
     const state = get();
     if (state.past.length === 0) return;
 
     const newPast = [...state.past];
     const snapshot = newPast.pop()!;
-    const current: Snapshot = structuredClone({ nodes: state.nodes, edges: state.edges });
+    const current: Snapshot = structuredClone({
+      nodes: state.nodes,
+      edges: state.edges,
+      layoutMode: state.layoutMode,
+    });
 
     set({
       nodes: snapshot.nodes,
       edges: snapshot.edges,
+      ...(snapshot.layoutMode ? { layoutMode: snapshot.layoutMode } : {}),
       past: newPast,
       future: [...state.future, current],
       selectedNodeId: null,
@@ -350,11 +423,16 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
 
     const newFuture = [...state.future];
     const snapshot = newFuture.pop()!;
-    const current: Snapshot = structuredClone({ nodes: state.nodes, edges: state.edges });
+    const current: Snapshot = structuredClone({
+      nodes: state.nodes,
+      edges: state.edges,
+      layoutMode: state.layoutMode,
+    });
 
     set({
       nodes: snapshot.nodes,
       edges: snapshot.edges,
+      ...(snapshot.layoutMode ? { layoutMode: snapshot.layoutMode } : {}),
       past: [...state.past, current],
       future: newFuture,
       selectedNodeId: null,

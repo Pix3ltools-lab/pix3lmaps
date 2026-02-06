@@ -231,7 +231,7 @@ src/
 
 ## Development Phases
 
-### Phase 1 — Foundation
+### Phase 1 — Foundation [COMPLETE]
 - Create the Next.js project with all dependencies
 - Define TypeScript types (`types/index.ts`): MindMap, MindMapNode, MindMapEdge, NodeShape, LayoutMode, etc.
 - Set up Dexie.js database schema (`lib/db.ts`)
@@ -240,7 +240,7 @@ src/
 - Root layout (`app/layout.tsx`) with Google Fonts (Montserrat, Roboto Condensed) and global styles
 - **Deliverable**: project runs with `npm run dev`, shows an empty page with correct fonts and dark theme
 
-### Phase 2 — Dashboard
+### Phase 2 — Dashboard [COMPLETE]
 - Dashboard page (`app/page.tsx`) with header, footer and main content area
 - `CreateMapButton` component — creates a new map with a root "Central Idea" node and navigates to the editor
 - `MapCard` component — displays thumbnail preview, map name, last-modified date, duplicate/delete actions
@@ -249,7 +249,7 @@ src/
 - CRUD operations wired to Dexie.js: create, rename, duplicate, delete (with confirmation modal)
 - **Deliverable**: dashboard is fully functional, maps can be created/duplicated/deleted, clicking a card navigates to `/map/[id]`
 
-### Phase 3 — Editor Core
+### Phase 3 — Editor Core [COMPLETE]
 - Editor page (`app/map/[id]/page.tsx`) — loads map data from IndexedDB
 - Zustand store (`hooks/useMapStore.ts`) — nodes, edges, selected node, layout mode
 - `MindMapCanvas` component — React Flow wrapper with dot-grid background, minimap, zoom/pan
@@ -260,7 +260,7 @@ src/
 - Delete node (Delete/Backspace key), root node protected
 - **Deliverable**: user can create a map, add/edit/delete nodes, navigate back to dashboard
 
-### Phase 4 — Node Features
+### Phase 4 — Node Features [COMPLETE]
 - Extend `MindMapNode` with: image display (top), emoji/icon (left of text), link badge, comment badge, 3 shapes (rounded rectangle, pill, diamond)
 - `PropertiesSidebar` component (right, collapsible, 280px) — all node properties:
   - Color picker (14-color palette)
@@ -284,11 +284,11 @@ src/
 - Auto-recalculate radial/tree layout on node add/remove
 - **Deliverable**: all 3 layouts work, transitions are smooth, switching is seamless
 
-### Phase 6 — Advanced Features
-- `hooks/useUndoRedo.ts` — snapshot stack (max 50), wired to Zustand store
-- Undo/redo buttons in toolbar
-- `hooks/useKeyboardShortcuts.ts` — all shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Shift+Z, Delete, Tab, Enter, Escape)
-- `hooks/useAutoSave.ts` — debounced save (500ms) to IndexedDB, thumbnail regeneration on each save
+### Phase 6 — Advanced Features [PARTIAL — undo/redo done, see notes]
+- ~~`hooks/useUndoRedo.ts` — snapshot stack (max 50), wired to Zustand store~~ **DONE** — implemented directly in `useMapStore.ts` (snapshot-based, 50-step limit, 300ms batching for rapid changes, drag-aware)
+- ~~Undo/redo buttons in toolbar~~ **DONE** — with disabled state when stack is empty
+- ~~`hooks/useKeyboardShortcuts.ts` — all shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Shift+Z, Delete, Tab, Enter, Escape)~~ **PARTIAL** — Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y and Delete/Backspace done inline in `MindMapCanvas.tsx`; Tab, Enter, Escape, Ctrl+S still TODO
+- ~~`hooks/useAutoSave.ts` — debounced save (500ms) to IndexedDB, thumbnail regeneration on each save~~ **DONE** — auto-save implemented in `useMapStore.ts` via `debouncedPersist`; thumbnail regeneration still TODO
 - Thumbnail generation using `html-to-image` (`toJpeg`, 320×180, 60% quality)
 - `lib/exportUtils.ts`:
   - Export as PNG (full canvas bounding box)
@@ -299,8 +299,8 @@ src/
 - Context menu (right-click) on nodes: add child, edit, delete
 - **Deliverable**: undo/redo works, shortcuts work, auto-save works, export/import works, thumbnails appear on dashboard
 
-### Phase 7 — Polish & Deploy
-- Light theme implementation (CSS variables swap), ThemeToggle component in toolbar
+### Phase 7 — Polish & Deploy [PARTIAL — theme toggle done]
+- ~~Light theme implementation (CSS variables swap), ThemeToggle component in toolbar~~ **DONE** — dark/light theme via `data-theme` attribute + CSS custom properties, toggle in Toolbar
 - Responsive adjustments for tablet
 - Mobile detection with "Use desktop for best experience" message
 - Footer with links and version info

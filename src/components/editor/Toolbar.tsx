@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useReactFlow } from '@xyflow/react';
 import { useMapStore } from '@/hooks/useMapStore';
 import { useTheme } from '@/contexts/ThemeContext';
+import { LayoutSelector } from './LayoutSelector';
 
 export function Toolbar() {
   const router = useRouter();
@@ -97,6 +98,10 @@ export function Toolbar() {
             {mapName}
           </span>
         )}
+
+        <span className="text-[var(--border-color)]">|</span>
+
+        <LayoutSelector />
       </div>
 
       {/* Right side */}

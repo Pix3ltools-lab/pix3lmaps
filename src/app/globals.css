@@ -90,6 +90,11 @@ body {
   border-color: var(--border-color);
 }
 
+/* ── Layout transition animation ─────────────────────────────────── */
+.layout-animating .react-flow__node {
+  transition: transform 300ms ease;
+}
+
 /* ── React Flow overrides ────────────────────────────────────────── */
 .react-flow {
   --xy-background-color: var(--bg-body);
