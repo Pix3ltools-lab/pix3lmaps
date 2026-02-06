@@ -17,6 +17,7 @@ export async function captureThumbnail(
       quality: THUMBNAIL_QUALITY,
       pixelRatio: 1,
       filter: filterNode,
+      skipFonts: true,
     });
     return dataUrl;
   } catch {

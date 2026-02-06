@@ -17,6 +17,7 @@ export async function exportPng(
   const dataUrl = await toPng(containerEl, {
     pixelRatio: 2,
     filter: filterNode,
+    skipFonts: true,
   });
   const link = document.createElement('a');
   link.download = `${fileName}.png`;
