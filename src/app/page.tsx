@@ -2,6 +2,7 @@
 
 import { useTheme } from '@/contexts/ThemeContext';
 import MapGallery from '@/components/dashboard/MapGallery';
+import StorageWarning from '@/components/ui/StorageWarning';
 
 export default function DashboardPage() {
   const { theme, toggleTheme } = useTheme();
@@ -11,12 +12,15 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="bg-surface border-theme border-b">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <h1 className="text-xl font-bold tracking-tight">
-            <span className="text-primary">Pix</span>
-            <span style={{ color: '#E74C3C' }}>3</span>
-            <span style={{ color: '#3498DB' }}>l</span>
-            <span className="text-primary">Maps</span>
-          </h1>
+          <div className="flex items-baseline gap-2">
+            <h1 className="text-xl font-bold tracking-tight">
+              <span className="text-primary">Pix</span>
+              <span style={{ color: '#E74C3C' }}>3</span>
+              <span style={{ color: '#3498DB' }}>l</span>
+              <span className="text-primary">Maps</span>
+            </h1>
+            <span className="text-secondary text-xs font-medium">v1.0.0</span>
+          </div>
 
           <button
             onClick={toggleTheme}
@@ -63,6 +67,9 @@ export default function DashboardPage() {
           </button>
         </div>
       </header>
+
+      {/* Storage warning banner */}
+      <StorageWarning />
 
       {/* Main content */}
       <main className="flex-1 px-4 py-6">

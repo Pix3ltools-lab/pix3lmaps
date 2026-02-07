@@ -41,7 +41,15 @@ Build a **Next.js** (App Router) web app called **Pix3lMaps** for creating and m
   - If generation fails, show a placeholder icon as fallback
   - Thumbnails are included in JSON export/import
 - **Empty state**: when no maps exist, the dashboard shows a centered message (e.g. "No maps yet — create your first mind map and start planning your next content project!") with the "New Map" button
-- When a new map is created, it starts with a single **root node** pre-filled with the text "Central Idea"
+- **Map templates**: clicking "New Map" opens a template picker modal with 7 pre-built structures:
+  - **Blank Map** — single root node, free layout (same as before)
+  - **SWOT Analysis** — root + 4 colored children (Strengths/Weaknesses/Opportunities/Threats), tree layout
+  - **Pros & Cons** — root + 2 children (green Pros, red Cons), tree layout
+  - **Project Plan** — root + 3 children (Planning, Execution, Review), tree layout
+  - **Weekly Planner** — root + 7 children (Mon–Sun, each a different color), tree layout
+  - **Brainstorm** — root + 4 pill-shaped children (Idea 1–4, varied colors), tree layout
+  - **Meeting Notes** — root + 3 children (Agenda, Discussion, Action Items), tree layout
+  - Template definitions live in `src/lib/templates.ts`; the modal is `TemplatePickerModal.tsx`
 - Auto-save on every change with a 500ms debounce (thumbnail is regenerated on each auto-save)
 
 ### 2. Mind Map Editor
@@ -189,7 +197,8 @@ src/
 │   ├── dashboard/
 │   │   ├── MapCard.tsx          # Card with thumbnail preview, name, date, actions
 │   │   ├── MapGallery.tsx       # Grid of MapCards with search, sort controls
-│   │   └── CreateMapButton.tsx
+│   │   ├── CreateMapButton.tsx
+│   │   └── TemplatePickerModal.tsx  # Modal with template grid for new maps
 │   ├── editor/
 │   │   ├── MindMapCanvas.tsx    # React Flow wrapper
 │   │   ├── MindMapNode.tsx      # Custom node component
@@ -209,6 +218,7 @@ src/
 ├── lib/
 │   ├── db.ts               # Dexie.js setup (IndexedDB)
 │   ├── layouts.ts           # Layout algorithms (radial, tree)
+│   ├── templates.ts         # Map template definitions (7 templates)
 │   ├── exportUtils.ts       # PNG and JSON export/import
 │   └── constants.ts
 └── types/
@@ -242,12 +252,13 @@ src/
 
 ### Phase 2 — Dashboard [COMPLETE]
 - Dashboard page (`app/page.tsx`) with header, footer and main content area
-- `CreateMapButton` component — creates a new map with a root "Central Idea" node and navigates to the editor
+- `CreateMapButton` component — opens template picker modal; user chooses a template to create the map
+- `TemplatePickerModal` component — 2–3 column grid of 7 template cards (emoji icon, name, description); click creates map from template and navigates to editor; close on Escape or backdrop click
 - `MapCard` component — displays thumbnail preview, map name, last-modified date, duplicate/delete actions
 - `MapGallery` component — grid of MapCards with search input and sort toggle (date / name)
 - Empty state with message and "New Map" button
 - CRUD operations wired to Dexie.js: create, rename, duplicate, delete (with confirmation modal)
-- **Deliverable**: dashboard is fully functional, maps can be created/duplicated/deleted, clicking a card navigates to `/map/[id]`
+- **Deliverable**: dashboard is fully functional, maps can be created from templates/duplicated/deleted, clicking a card navigates to `/map/[id]`
 
 ### Phase 3 — Editor Core [COMPLETE]
 - Editor page (`app/map/[id]/page.tsx`) — loads map data from IndexedDB
@@ -284,7 +295,7 @@ src/
 - Auto-recalculate radial/tree layout on node add/remove
 - **Deliverable**: all 3 layouts work, transitions are smooth, switching is seamless
 
-### Phase 6 — Advanced Features [PARTIAL — undo/redo done, see notes]
+### Phase 6 — Advanced Features [COMPLETE]
 - ~~`hooks/useUndoRedo.ts` — snapshot stack (max 50), wired to Zustand store~~ **DONE** — implemented directly in `useMapStore.ts` (snapshot-based, 50-step limit, 300ms batching for rapid changes, drag-aware)
 - ~~Undo/redo buttons in toolbar~~ **DONE** — with disabled state when stack is empty
 - ~~`hooks/useKeyboardShortcuts.ts` — all shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Shift+Z, Delete, Tab, Enter, Escape)~~ **PARTIAL** — Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y and Delete/Backspace done inline in `MindMapCanvas.tsx`; Tab, Enter, Escape, Ctrl+S still TODO

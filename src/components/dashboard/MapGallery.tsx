@@ -121,7 +121,7 @@ export default function MapGallery() {
         <p className="text-secondary mb-6 text-sm">
           Create your first mind map to get started
         </p>
-        <CreateMapButton />
+        <CreateMapButton onCreated={loadMaps} />
       </div>
     );
   }
@@ -177,7 +177,7 @@ export default function MapGallery() {
           {sortBy === 'date' ? 'Newest' : 'A–Z'}
         </button>
 
-        <CreateMapButton />
+        <CreateMapButton onCreated={loadMaps} />
       </div>
 
       {/* No results state */}
