@@ -17,7 +17,7 @@ const robotoCondensed = Roboto_Condensed({
 });
 
 export const metadata: Metadata = {
-  title: 'Pix3lMaps',
+  title: 'Pix3lMaps — Visual Mind Mapping for Content Creators',
   description: 'Visual mind mapping for AI-assisted content creators',
 };
 

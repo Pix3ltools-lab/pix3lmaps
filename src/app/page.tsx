@@ -19,7 +19,7 @@ export default function DashboardPage() {
               <span style={{ color: '#3498DB' }}>l</span>
               <span className="text-primary">Maps</span>
             </h1>
-            <span className="text-secondary text-xs font-medium">v1.0.0</span>
+            <span className="text-secondary text-xs font-medium">v1.0.1</span>
           </div>
 
           <button

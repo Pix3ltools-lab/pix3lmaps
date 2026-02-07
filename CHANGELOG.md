@@ -1,5 +1,12 @@
 # Changelog
 
+## v1.0.1 — 2026-02-07
+
+### Added
+
+- **Privacy Policy** page at `/privacy` with GDPR info, adapted from Pix3lCover
+- **Descriptive browser tab title** — "Pix3lMaps — Visual Mind Mapping for Content Creators"
+
 ## v1.0.0 — 2026-02-07
 
 First public release.
