@@ -2,6 +2,8 @@
 
 Pix3lMaps is a browser-based mind-mapping application built with Next.js and React Flow. Every map is stored locally in IndexedDB, so there is no server, no account, and no data ever leaves your device.
 
+![Pix3lMaps screenshot](screenshot.jpg)
+
 Create a new map from a blank canvas or pick one of the built-in templates (SWOT Analysis, Pros & Cons, Project Plan, Weekly Planner, Brainstorm, Meeting Notes) to get a head start. Nodes can be freely positioned or automatically arranged with radial and tree layouts. Each node supports custom colors, shapes, icons, images, comments, and links. Full undo/redo, keyboard shortcuts, PNG/JSON export, and JSON import round out the feature set.
 
 ## Features
