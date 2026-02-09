@@ -10,14 +10,15 @@ Build a **Next.js** (App Router) web app called **Pix3lMaps** for creating and m
 
 ## Tech Stack
 
-- **Framework**: Next.js 14+ with App Router
+- **Framework**: Next.js 16 with App Router
 - **Language**: TypeScript
-- **Styling**: Tailwind CSS
+- **Styling**: Tailwind CSS v4
 - **Canvas/Rendering**: **React Flow** (`@xyflow/react`) for node rendering, connections and map interaction
 - **Storage**: **Dexie.js** (IndexedDB wrapper) — no localStorage, no cloud
 - **Image export**: `html-to-image` for PNG export
 - **Data export/import**: native JSON
-- **Fonts**: Montserrat + Roboto Condensed via Google Fonts (matching Pix3lCover)
+- **State management**: Zustand
+- **Fonts**: Montserrat + Roboto Condensed via `next/font/google`
 - **Analytics**: `@vercel/analytics` (matching Pix3lCover)
 - **Deploy target**: Vercel
 
@@ -188,54 +189,59 @@ Build a **Next.js** (App Router) web app called **Pix3lMaps** for creating and m
 ```
 src/
 ├── app/
-│   ├── layout.tsx          # Root layout with fonts and providers
-│   ├── page.tsx            # Dashboard (map listing)
-│   └── map/
-│       └── [id]/
-│           └── page.tsx    # Map editor
+│   ├── layout.tsx            # Root layout with fonts, ThemeProvider, Analytics
+│   ├── page.tsx              # Dashboard (map listing) with footer
+│   ├── globals.css           # Tailwind v4 imports, theme CSS variables
+│   ├── map/
+│   │   └── [id]/
+│   │       └── page.tsx      # Map editor
+│   └── privacy/
+│       └── page.tsx          # Privacy policy page
 ├── components/
 │   ├── dashboard/
-│   │   ├── MapCard.tsx          # Card with thumbnail preview, name, date, actions
-│   │   ├── MapGallery.tsx       # Grid of MapCards with search, sort controls
+│   │   ├── MapCard.tsx            # Card with thumbnail preview, name, date, actions
+│   │   ├── MapGallery.tsx         # Grid of MapCards with search, sort controls
 │   │   ├── CreateMapButton.tsx
 │   │   └── TemplatePickerModal.tsx  # Modal with template grid for new maps
 │   ├── editor/
-│   │   ├── MindMapCanvas.tsx    # React Flow wrapper
-│   │   ├── MindMapNode.tsx      # Custom node component
-│   │   ├── Toolbar.tsx
-│   │   ├── PropertiesSidebar.tsx
-│   │   └── LayoutSelector.tsx
+│   │   ├── MindMapCanvas.tsx      # React Flow wrapper + keyboard shortcuts
+│   │   ├── MindMapNode.tsx        # Custom node component
+│   │   ├── NodeContextMenu.tsx    # Right-click context menu (add child, edit, delete)
+│   │   ├── NodePropertiesSidebar.tsx  # Color, shape, size, image, URL, icon, comments
+│   │   ├── Toolbar.tsx            # Nav, zoom, layout, undo/redo, export, theme toggle
+│   │   └── LayoutSelector.tsx     # Radial / Tree / Free selector
 │   └── ui/
-│       ├── Button.tsx
-│       ├── ColorPicker.tsx
-│       ├── Modal.tsx            # Reusable modal dialog (used for comments, confirmations)
-│       └── ThemeToggle.tsx
+│       ├── Modal.tsx              # Reusable modal dialog (comments, confirmations)
+│       └── StorageWarning.tsx     # Dismissible IndexedDB storage warning banner
+├── contexts/
+│   └── ThemeContext.tsx       # React Context for dark/light theme management
 ├── hooks/
-│   ├── useMapStore.ts      # Zustand store for current map state
-│   ├── useAutoSave.ts
-│   ├── useUndoRedo.ts
-│   └── useKeyboardShortcuts.ts
+│   └── useMapStore.ts        # Zustand store: state, actions, undo/redo, auto-save
 ├── lib/
-│   ├── db.ts               # Dexie.js setup (IndexedDB)
-│   ├── layouts.ts           # Layout algorithms (radial, tree)
-│   ├── templates.ts         # Map template definitions (7 templates)
-│   ├── exportUtils.ts       # PNG and JSON export/import
-│   └── constants.ts
+│   ├── db.ts                 # Dexie.js setup (IndexedDB)
+│   ├── layouts.ts            # Layout algorithms (radial, tree)
+│   ├── templates.ts          # Map template definitions (7 templates)
+│   ├── exportUtils.ts        # PNG and JSON export/import
+│   ├── thumbnailUtils.ts     # Thumbnail capture (toJpeg, 320×180, 60% quality)
+│   └── constants.ts          # Color palette, icon set, default values
 └── types/
-    └── index.ts             # TypeScript types (MindMap, MindMapNode, etc.)
+    └── index.ts              # TypeScript types (MindMap, MindMapNode, etc.)
 ```
 
 ---
 
 ## Important Implementation Details
 
-1. **Zustand** for editor state management (nodes, edges, selection, undo/redo stack)
-2. React Flow **custom nodes** must display: optional image (top), optional emoji/icon (left of text), text, color, shape, "+" button on hover, and small icon badges for comment (chat bubble) and link (link icon) when present
-3. The **radial layout** algorithm must distribute children in concentric circles with equidistant angles, avoiding overlaps
-4. The **tree layout** algorithm must calculate subtree widths to avoid horizontal overlaps
-5. **Undo/Redo**: maintain a state snapshot stack (max 50 steps)
-6. For **PNG export**, use `toSvg` or `toPng` from `html-to-image` on the React Flow container, computing the bounding box of all nodes to capture the entire map
-7. **Layout transitions** should animate node positions using `requestAnimationFrame` or CSS transitions
+1. **Zustand** for all editor state: nodes, edges, selection, undo/redo stack, auto-save — consolidated in a single store (`useMapStore.ts`)
+2. **Undo/Redo**: snapshot-based history (max 50 steps, 300ms batching for rapid changes, drag-aware) — implemented directly in the Zustand store
+3. **Auto-save**: debounced persist (500ms) to IndexedDB via `debouncedPersist` in the store; thumbnail regenerated on each save via `thumbnailUtils.ts`
+4. **Keyboard shortcuts**: handled inline in `MindMapCanvas.tsx` (Ctrl+S, Ctrl+Z, Ctrl+Shift+Z, Delete, Tab, Enter, Escape)
+5. React Flow **custom nodes** display: optional image (top), optional emoji/icon (left of text), text, color, shape, "+" button on hover, and small icon badges for comment (chat bubble) and link (link icon) when present
+6. The **radial layout** algorithm distributes children in concentric circles with equidistant angles, minimum arc spacing enforced to avoid overlaps
+7. The **tree layout** algorithm calculates subtree widths to avoid horizontal overlaps
+8. For **PNG export**, `toPng` from `html-to-image` on the React Flow container, computing the bounding box of all nodes to capture the entire map
+9. **Layout transitions**: CSS-based animation (`.layout-animating .react-flow__node { transition: transform 300ms ease; }`) toggled via `isAnimating` state
+10. **Theme**: React Context (`ThemeContext.tsx`) with `data-theme` attribute on `<html>`, CSS custom properties for all colors — toggle integrated in Toolbar
 
 ---
 
@@ -273,7 +279,7 @@ src/
 
 ### Phase 4 — Node Features [COMPLETE]
 - Extend `MindMapNode` with: image display (top), emoji/icon (left of text), link badge, comment badge, 3 shapes (rounded rectangle, pill, diamond)
-- `PropertiesSidebar` component (right, collapsible, 280px) — all node properties:
+- `NodePropertiesSidebar` component (right, collapsible, 280px) — all node properties:
   - Color picker (14-color palette)
   - Shape selector
   - Text size (small / medium / large)
@@ -286,40 +292,38 @@ src/
 - Edges inherit parent node color with reduced opacity
 - **Deliverable**: nodes are fully featured, sidebar controls work, comments modal works
 
-### Phase 5 — Layout Algorithms
+### Phase 5 — Layout Algorithms [COMPLETE]
 - `LayoutSelector` component in toolbar (Radial / Tree / Free)
 - `lib/layouts.ts` — radial algorithm (concentric circles, equidistant angles, overlap avoidance)
 - `lib/layouts.ts` — tree algorithm (top-down, subtree width calculation, no horizontal overlap)
 - Free mode: positions saved as-is, no recalculation
-- Animated transitions (300ms ease) when switching layout
+- Animated transitions (300ms ease CSS) when switching layout
 - Auto-recalculate radial/tree layout on node add/remove
 - **Deliverable**: all 3 layouts work, transitions are smooth, switching is seamless
 
 ### Phase 6 — Advanced Features [COMPLETE]
-- ~~`hooks/useUndoRedo.ts` — snapshot stack (max 50), wired to Zustand store~~ **DONE** — implemented directly in `useMapStore.ts` (snapshot-based, 50-step limit, 300ms batching for rapid changes, drag-aware)
-- ~~Undo/redo buttons in toolbar~~ **DONE** — with disabled state when stack is empty
-- ~~`hooks/useKeyboardShortcuts.ts` — all shortcuts (Ctrl+S, Ctrl+Z, Ctrl+Shift+Z, Delete, Tab, Enter, Escape)~~ **PARTIAL** — Ctrl+Z/Ctrl+Shift+Z/Ctrl+Y and Delete/Backspace done inline in `MindMapCanvas.tsx`; Tab, Enter, Escape, Ctrl+S still TODO
-- ~~`hooks/useAutoSave.ts` — debounced save (500ms) to IndexedDB, thumbnail regeneration on each save~~ **DONE** — auto-save implemented in `useMapStore.ts` via `debouncedPersist`; thumbnail regeneration still TODO
-- Thumbnail generation using `html-to-image` (`toJpeg`, 320×180, 60% quality)
+- Undo/redo — snapshot-based history (max 50 steps, 300ms batching, drag-aware) implemented directly in `useMapStore.ts`; undo/redo buttons in toolbar with disabled state
+- Keyboard shortcuts — all implemented inline in `MindMapCanvas.tsx`: Ctrl+S, Ctrl+Z, Ctrl+Shift+Z/Ctrl+Y, Delete/Backspace, Tab, Enter, Escape
+- Auto-save — debounced persist (500ms) to IndexedDB via `useMapStore.ts`
+- Thumbnail generation — `thumbnailUtils.ts` using `html-to-image` (`toJpeg`, 320×180, 60% quality), regenerated on each save
 - `lib/exportUtils.ts`:
   - Export as PNG (full canvas bounding box)
   - Export as JSON (all map data including thumbnails, images, comments)
   - Import from JSON (file picker, validate, create map in IndexedDB)
 - Export/import buttons in toolbar
 - Manual connect nodes (drag output handle → input handle)
-- Context menu (right-click) on nodes: add child, edit, delete
+- Context menu (`NodeContextMenu.tsx`) — right-click on nodes: add child, edit, delete
 - **Deliverable**: undo/redo works, shortcuts work, auto-save works, export/import works, thumbnails appear on dashboard
 
-### Phase 7 — Polish & Deploy [PARTIAL — theme toggle done]
-- ~~Light theme implementation (CSS variables swap), ThemeToggle component in toolbar~~ **DONE** — dark/light theme via `data-theme` attribute + CSS custom properties, toggle in Toolbar
-- Responsive adjustments for tablet
-- Mobile detection with "Use desktop for best experience" message
-- Footer with links and version info
+### Phase 7 — Polish & Deploy [COMPLETE]
+- Dark/light theme via `data-theme` attribute + CSS custom properties (`ThemeContext.tsx`), toggle in Toolbar
+- Footer with Pix3lTools link, X/Twitter, Privacy Policy link, version info
+- Privacy policy page (`app/privacy/page.tsx`) — GDPR-compliant, covers IndexedDB, Vercel Analytics, Google Fonts
+- Storage warning banner (`StorageWarning.tsx`) — dismissible IndexedDB usage notice
 - `vercel.json` configuration
-- `@vercel/analytics` integration
-- Final `npm run build` — fix any errors
-- End-to-end manual testing of all features
-- **Deliverable**: app is production-ready, builds clean, deploys to Vercel
+- `@vercel/analytics` integration in `layout.tsx`
+- Final `npm run build` — builds clean, deployed to Vercel
+- **Deliverable**: app is production-ready at v1.0.1, builds clean, deployed to Vercel
 
 ---
 

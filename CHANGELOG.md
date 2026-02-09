@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.1.0 — 2026-02-09
+
+### Added
+
+- **CONTRIBUTING.md** — contribution guidelines adapted for Pix3lMaps
+- **LICENSE** — MIT license
+- **Screenshot** in README.md
+
+### Fixed
+
+- **Dot grid** now visible in light theme (dedicated `--dot-grid` CSS variable)
+
+### Changed
+
+- **pix3lmaps.md** spec aligned with actual codebase (file structure, phase statuses, architecture)
+
 ## v1.0.1 — 2026-02-07
 
 ### Added
