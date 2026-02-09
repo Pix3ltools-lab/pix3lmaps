@@ -238,7 +238,7 @@ export function MindMapCanvas() {
       >
         <Background
           variant={BackgroundVariant.Dots}
-          color="var(--text-secondary)"
+          color="var(--dot-grid)"
           style={{ opacity: 0.3 }}
           gap={20}
           size={1}
