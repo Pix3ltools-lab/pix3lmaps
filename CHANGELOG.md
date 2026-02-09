@@ -1,5 +1,14 @@
 # Changelog
 
+## v1.2.0 — 2026-02-09
+
+### Added
+
+- **Move branch** — reparent a node (and its entire subtree) to a new parent via right-click context menu ("Move branch...") or keyboard Ctrl+X / Ctrl+V
+- **Toast notifications** — transient feedback messages (info / success / error) for move operations
+- Visual feedback during move: cut node shown at 50% opacity, crosshair cursor in move-target mode
+- Validation: prevents moving root node, moving to self, or moving under own descendant
+
 ## v1.1.0 — 2026-02-09
 
 ### Added

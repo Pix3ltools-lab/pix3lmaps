@@ -14,7 +14,8 @@ Create a new map from a blank canvas or pick one of the built-in templates (SWOT
 - **Node properties** — color, shape (rectangle / pill / diamond), font size, icon, image, comment, URL
 - **Layouts** — radial, tree, and free positioning with animated transitions
 - **Undo / Redo** — snapshot-based history with Ctrl+Z / Ctrl+Shift+Z
-- **Keyboard shortcuts** — Tab (add child), Enter (add sibling), Escape (deselect), Ctrl+S (save)
+- **Move branch** — reparent a node and its subtree via context menu or Ctrl+X / Ctrl+V
+- **Keyboard shortcuts** — Tab (add child), Enter (add sibling), Ctrl+X/V (move branch), Escape (deselect), Ctrl+S (save)
 - **Export / Import** — PNG image export, JSON export and import
 - **Themes** — light and dark mode via CSS custom properties
 - **Offline-first** — all data stored in IndexedDB with Dexie.js; works without a network
