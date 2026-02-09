@@ -53,6 +53,8 @@ interface MapState {
   past: Snapshot[];
   future: Snapshot[];
   isAnimating: boolean;
+  cutNodeId: string | null;
+  movingNodeId: string | null;
 }
 
 interface MapActions {
@@ -75,6 +77,9 @@ interface MapActions {
   redo: () => void;
   setLayoutMode: (mode: LayoutMode) => void;
   setIsAnimating: (v: boolean) => void;
+  moveBranch: (nodeId: string, newParentId: string) => void;
+  cutNode: (nodeId: string) => void;
+  cancelMoveBranch: () => void;
 }
 
 const initialState: MapState = {
@@ -90,6 +95,8 @@ const initialState: MapState = {
   past: [],
   future: [],
   isAnimating: false,
+  cutNodeId: null,
+  movingNodeId: null,
 };
 
 // ── Debounced persist ───────────────────────────────────────────────
@@ -436,6 +443,63 @@ export const useMapStore = create<MapState & MapActions>()((set, get) => ({
   },
 
   setIsAnimating: (v) => set({ isAnimating: v }),
+
+  moveBranch: (nodeId, newParentId) => {
+    const state = get();
+    const node = state.nodes.find((n) => n.id === nodeId);
+    if (!node) throw new Error('Node not found');
+    if (!node.data.parentId) throw new Error('Cannot move the root node');
+    if (nodeId === newParentId) throw new Error('Cannot move a node under itself');
+
+    const descendantIds = getDescendantIds(nodeId, state.edges);
+    if (descendantIds.includes(newParentId)) {
+      throw new Error('Cannot move a node under its own descendant');
+    }
+
+    // Already under this parent — no-op
+    if (node.data.parentId === newParentId) {
+      set({ cutNodeId: null, movingNodeId: null });
+      return;
+    }
+
+    const past = pushSnapshot(state, false);
+
+    // Remove old edge, add new one
+    const newEdges = [
+      ...state.edges.filter((e) => e.target !== nodeId),
+      { id: `edge-${newParentId}-${nodeId}`, source: newParentId, target: nodeId },
+    ];
+
+    // Update parentId
+    let newNodes = state.nodes.map((n) =>
+      n.id === nodeId ? { ...n, data: { ...n.data, parentId: newParentId } } : n,
+    );
+
+    if (state.layoutMode !== 'free') {
+      newNodes = applyLayout(state.layoutMode, newNodes, newEdges);
+    }
+
+    set({
+      nodes: newNodes,
+      edges: newEdges,
+      cutNodeId: null,
+      movingNodeId: null,
+      past,
+      future: [],
+    });
+    debouncedPersist(get());
+  },
+
+  cutNode: (nodeId) => {
+    const state = get();
+    const node = state.nodes.find((n) => n.id === nodeId);
+    if (!node || !node.data.parentId) return; // no-op on root
+    set({ cutNodeId: nodeId, movingNodeId: null });
+  },
+
+  cancelMoveBranch: () => {
+    set({ cutNodeId: null, movingNodeId: null });
+  },
 
   undo: () => {
     const state = get();

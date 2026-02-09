@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   ReactFlow,
   Background,
@@ -14,6 +14,7 @@ import { useMapStore } from '@/hooks/useMapStore';
 import { MindMapNode } from './MindMapNode';
 import { NodeContextMenu, type ContextMenuAction } from './NodeContextMenu';
 import { captureThumbnail } from '@/lib/thumbnailUtils';
+import { Toast } from '@/components/ui/Toast';
 import type { MindMapNodeData } from '@/types';
 
 const nodeTypes = { mindmap: MindMapNode } as const;
@@ -48,10 +49,25 @@ export function MindMapCanvas() {
   const redo = useMapStore((s) => s.redo);
   const isAnimating = useMapStore((s) => s.isAnimating);
   const setIsAnimating = useMapStore((s) => s.setIsAnimating);
+  const moveBranch = useMapStore((s) => s.moveBranch);
+  const cutNode = useMapStore((s) => s.cutNode);
+  const cancelMoveBranch = useMapStore((s) => s.cancelMoveBranch);
+  const cutNodeId = useMapStore((s) => s.cutNodeId);
+  const movingNodeId = useMapStore((s) => s.movingNodeId);
   const { fitView } = useReactFlow();
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [toast, setToast] = useState<{ message: string; type: 'info' | 'error' | 'success' } | null>(null);
   const thumbnailTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Visual feedback for cut / move-target mode ─────────────────────
+  const displayNodes = useMemo(() => {
+    if (!cutNodeId && !movingNodeId) return nodes;
+    const dimId = cutNodeId || movingNodeId;
+    return nodes.map((n) =>
+      n.id === dimId ? { ...n, style: { ...n.style, opacity: 0.5 } } : n,
+    );
+  }, [nodes, cutNodeId, movingNodeId]);
 
   // ── Thumbnail capture (debounced) ──────────────────────────────────
   useEffect(() => {
@@ -88,7 +104,11 @@ export function MindMapCanvas() {
     setSelectedNodeId(null);
     setEditingNodeId(null);
     setContextMenu(null);
-  }, [setSelectedNodeId, setEditingNodeId]);
+    if (movingNodeId || cutNodeId) {
+      cancelMoveBranch();
+      setToast({ message: 'Move cancelled', type: 'info' });
+    }
+  }, [setSelectedNodeId, setEditingNodeId, movingNodeId, cutNodeId, cancelMoveBranch]);
 
   const handleConnect = useCallback(
     (connection: Connection) => {
@@ -103,6 +123,21 @@ export function MindMapCanvas() {
       setContextMenu({ nodeId: node.id, x: event.clientX, y: event.clientY });
     },
     [],
+  );
+
+  // ── Node click — intercept for move-target mode ───────────────────
+  const handleNodeClick: NodeMouseHandler = useCallback(
+    (_event, node) => {
+      if (!movingNodeId && !cutNodeId) return;
+      const sourceId = movingNodeId || cutNodeId!;
+      try {
+        moveBranch(sourceId, node.id);
+        setToast({ message: 'Branch moved successfully', type: 'success' });
+      } catch (err) {
+        setToast({ message: (err as Error).message, type: 'error' });
+      }
+    },
+    [movingNodeId, cutNodeId, moveBranch],
   );
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────
@@ -121,15 +156,40 @@ export function MindMapCanvas() {
       // Don't handle other shortcuts when editing text
       if (editingNodeId || isInputFocused) return;
 
-      // Undo/redo
+      // Ctrl/Cmd shortcuts
       if (e.ctrlKey || e.metaKey) {
+        // Undo/redo
         if (e.key === 'z' && !e.shiftKey) {
           e.preventDefault();
           undo();
-        } else if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
+          return;
+        }
+        if ((e.key === 'z' && e.shiftKey) || e.key === 'y') {
           e.preventDefault();
           redo();
+          return;
         }
+
+        // Ctrl+X — cut node for move
+        if (e.key === 'x' && selectedNodeId) {
+          e.preventDefault();
+          cutNode(selectedNodeId);
+          setToast({ message: 'Node cut — select a new parent and press Ctrl+V', type: 'info' });
+          return;
+        }
+
+        // Ctrl+V — paste (move) cut node under selected node
+        if (e.key === 'v' && cutNodeId && selectedNodeId) {
+          e.preventDefault();
+          try {
+            moveBranch(cutNodeId, selectedNodeId);
+            setToast({ message: 'Branch moved successfully', type: 'success' });
+          } catch (err) {
+            setToast({ message: (err as Error).message, type: 'error' });
+          }
+          return;
+        }
+
         return;
       }
 
@@ -147,9 +207,13 @@ export function MindMapCanvas() {
         return;
       }
 
-      // Escape — clear selection
+      // Escape — cancel move / clear selection
       if (e.key === 'Escape') {
         e.preventDefault();
+        if (movingNodeId || cutNodeId) {
+          cancelMoveBranch();
+          setToast({ message: 'Move cancelled', type: 'info' });
+        }
         setSelectedNodeId(null);
         setEditingNodeId(null);
         setContextMenu(null);
@@ -176,6 +240,11 @@ export function MindMapCanvas() {
     redo,
     setSelectedNodeId,
     setEditingNodeId,
+    cutNode,
+    cutNodeId,
+    movingNodeId,
+    moveBranch,
+    cancelMoveBranch,
   ]);
 
   // ── Context menu actions ───────────────────────────────────────────
@@ -192,6 +261,21 @@ export function MindMapCanvas() {
               </svg>
             ),
             onClick: () => addChildNode(contextMenu.nodeId),
+          },
+          {
+            label: 'Move branch...',
+            icon: (
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M4 12l4-4 4 4" />
+                <path d="M8 8V2" />
+                <path d="M2 14h12" />
+              </svg>
+            ),
+            onClick: () => {
+              useMapStore.setState({ movingNodeId: contextMenu.nodeId });
+              setToast({ message: 'Click on the new parent node (Escape to cancel)', type: 'info' });
+            },
+            disabled: isRoot,
           },
           {
             label: 'Edit',
@@ -219,14 +303,20 @@ export function MindMapCanvas() {
       })()
     : [];
 
+  const isMoving = !!(movingNodeId || cutNodeId);
+
   return (
-    <div className={isAnimating ? 'layout-animating h-full w-full' : 'h-full w-full'}>
+    <div
+      className={`h-full w-full ${isAnimating ? 'layout-animating' : ''}`}
+      style={isMoving ? { cursor: 'crosshair' } : undefined}
+    >
       <ReactFlow
-        nodes={nodes}
+        nodes={displayNodes}
         edges={edges}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onNodeClick={handleNodeClick}
         onPaneClick={handlePaneClick}
         onConnect={handleConnect}
         onNodeContextMenu={handleNodeContextMenu}
@@ -258,6 +348,14 @@ export function MindMapCanvas() {
           y={contextMenu.y}
           actions={contextMenuActions}
           onClose={() => setContextMenu(null)}
+        />
+      )}
+
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>
